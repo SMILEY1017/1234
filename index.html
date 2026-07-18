@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>영의 이중슬릿 실험 시뮬레이션</title>
+  <title>영의 이중슬릿 실험 시뮬레이션 - 동적 파동</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
   <style>
     body {
@@ -14,8 +14,9 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      height: 100vh;
-      overflow: hidden;
+      min-height: 100vh;
+      overflow-x: auto;
+      overflow-y: auto;
     }
     #controls {
       display: flex;
@@ -50,17 +51,15 @@
     }
     button {
       padding: 10px 20px;
-      background-color: #4CAF50;
       color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
       font-weight: bold;
-      transition: background 0.2s;
     }
     button:hover { filter: brightness(1.1); }
+    #startBtn { background-color: #4CAF50; }
     #stopBtn { background-color: #F44336; }
-    #viewToggleBtn { background-color: #2196F3; }
     #canvas-container {
       position: relative;
       margin-top: 20px;
@@ -79,9 +78,105 @@
       white-space: nowrap;
       z-index: 20;
     }
+
+    #studentGate{position:fixed;inset:0;z-index:9999;background:rgba(5,10,20,.94);display:flex;align-items:center;justify-content:center;padding:24px}
+    .gate-card{width:min(460px,100%);background:#fff;color:#182033;border-radius:18px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.45)}
+    .gate-card h1{margin:0 0 8px;font-size:26px}.gate-card p{margin:0 0 20px;color:#64748b}
+    .gate-grid{display:grid;gap:14px}.gate-grid label{font-weight:700;font-size:14px}.gate-grid input{width:100%;margin-top:6px;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px}
+    #enterBtn{width:100%;margin-top:6px;background:#3157d5;color:#fff;padding:13px;font-size:16px}#enterBtn:disabled{opacity:.45;cursor:not-allowed}
+    #studentDashboard{width:100%;background:#172033;color:#fff;padding:10px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+    #studentDashboard .title{font-weight:800}#studentInfo{font-size:14px;color:#dbeafe}
+    #learningGoal{width:100%;background:#eef2ff;color:#243b7a;padding:9px 24px;text-align:center;font-size:14px;border-bottom:1px solid #c7d2fe}
+
+    #simulationPage, #quizPage { width: 100%; }
+    #quizPage { display: none; min-height: 100vh; background: #f4f7fb; color: #172033; }
+    #finishExploreBtn { background:#7c3aed; white-space:nowrap; }
+    .dashboard-actions { display:flex; align-items:center; gap:14px; }
+    .page-shell { width:min(920px, calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
+    .quiz-header { background:#172033; color:#fff; padding:20px 24px; border-radius:16px; margin-bottom:18px; }
+    .quiz-header-top { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; }
+    .quiz-header h1 { margin:0; font-size:25px; }
+    .quiz-header p { margin:8px 0 0; color:#dbeafe; }
+    #quizStudentInfo { font-weight:700; color:#bfdbfe; }
+    .progress-wrap { margin-top:16px; }
+    .progress-label { display:flex; justify-content:space-between; font-size:13px; color:#dbeafe; margin-bottom:6px; }
+    .progress-track { height:10px; background:#334155; border-radius:999px; overflow:hidden; }
+    #quizProgressBar { width:0%; height:100%; background:#60a5fa; transition:width .2s ease; }
+    #quizForm { display:grid; gap:16px; }
+    .quiz-card { background:#fff; border:1px solid #dbe3ee; border-radius:16px; padding:20px; box-shadow:0 8px 24px rgba(15,23,42,.06); }
+    .question-title { margin:0 0 14px; font-size:18px; line-height:1.55; }
+    .question-number { display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:30px; margin-right:8px; border-radius:50%; background:#e0e7ff; color:#3730a3; font-size:14px; }
+    .option-list { display:grid; gap:9px; }
+    .option-item { display:flex; align-items:flex-start; gap:10px; border:1px solid #cbd5e1; border-radius:11px; padding:11px 12px; cursor:pointer; transition:.15s; }
+    .option-item:hover { border-color:#818cf8; background:#f8faff; }
+    .option-item input { margin-top:3px; accent-color:#4f46e5; }
+    .question-feedback { display:none; margin-top:14px; border-radius:10px; padding:12px 14px; line-height:1.55; font-size:14px; }
+    .question-feedback.correct { display:block; background:#ecfdf5; color:#166534; border:1px solid #86efac; }
+    .question-feedback.incorrect { display:block; background:#fff7ed; color:#9a3412; border:1px solid #fdba74; }
+    .quiz-actions { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:22px; }
+    #submitQuizBtn { background:#2563eb; font-size:16px; padding:13px 28px; }
+    #retryQuizBtn { background:#475569; display:none; }
+    #backSimulationBtn { background:#0f766e; }
+    #finishActivityBtn { background:#dc2626; }
+    #quizResult { display:none; margin-top:20px; background:#eef2ff; border:1px solid #a5b4fc; border-radius:16px; padding:22px; text-align:center; }
+    #quizResult.show { display:block; }
+    #quizScore { font-size:34px; font-weight:900; color:#3730a3; }
+    #quizMessage { margin:8px 0 0; line-height:1.55; }
+    #incorrectFeedbackPanel { display:none; margin-top:20px; }
+    #incorrectFeedbackPanel.show { display:block; }
+    .feedback-summary { background:#fff; border:1px solid #dbe3ee; border-radius:16px; padding:22px; box-shadow:0 8px 24px rgba(15,23,42,.06); }
+    .feedback-summary h2 { margin:0 0 8px; font-size:21px; color:#172033; }
+    .feedback-summary > p { margin:0 0 16px; color:#64748b; line-height:1.55; }
+    .feedback-list { display:grid; gap:12px; }
+    .feedback-item { border:1px solid #fdba74; background:#fff7ed; border-radius:12px; padding:15px; text-align:left; }
+    .feedback-item h3 { margin:0 0 8px; color:#9a3412; font-size:16px; }
+    .feedback-answer { margin:5px 0; color:#334155; line-height:1.5; }
+    .feedback-concept { margin:10px 0 0; padding-top:10px; border-top:1px dashed #fdba74; color:#7c2d12; line-height:1.55; }
+    .feedback-perfect { border:1px solid #86efac; background:#ecfdf5; color:#166534; border-radius:12px; padding:16px; font-weight:700; }
+    .post-submit-actions { display:none; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:18px; }
+    .post-submit-actions.show { display:flex; }
+    .formula-chip { display:inline-block; margin-top:8px; background:#eef2ff; color:#3730a3; border-radius:8px; padding:5px 9px; font-family:Cambria, 'Times New Roman', serif; }
+    #finishPage { display:none; width:100%; min-height:100vh; background:#eef2ff; color:#172033; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; }
+    .finish-card { width:min(560px, 100%); background:#fff; border:1px solid #cbd5e1; border-radius:22px; padding:36px 28px; text-align:center; box-shadow:0 18px 50px rgba(15,23,42,.12); }
+    .finish-icon { width:72px; height:72px; margin:0 auto 18px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#dcfce7; color:#166534; font-size:38px; font-weight:900; }
+    .finish-card h1 { margin:0 0 10px; font-size:28px; }
+    .finish-card p { margin:8px 0; color:#475569; line-height:1.6; }
+    #finishStudentInfo { margin-top:20px; font-weight:800; color:#1e3a8a; }
+    #finishScore { margin:10px 0 4px; font-size:38px; font-weight:900; color:#3730a3; }
+    .finish-note { margin-top:20px !important; padding-top:18px; border-top:1px solid #e2e8f0; font-size:14px; }
+    .result-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}.result-actions button{background:#2563eb}.result-actions button:last-child{background:#475569}#downloadStatus{font-size:13px;color:#166534;font-weight:700}
+    @media (max-width: 760px) {
+      #controls { flex-wrap:wrap; gap:14px; padding:14px; }
+      #studentDashboard { align-items:flex-start; flex-direction:column; }
+      .dashboard-actions { width:100%; justify-content:space-between; }
+      #canvas-container { transform-origin:top left; }
+      .page-shell { width:min(100% - 20px, 920px); padding-top:16px; }
+    }
   </style>
 </head>
 <body>
+
+  <div id="studentGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <div class="gate-card">
+      <h1 id="gateTitle">영의 이중슬릿 탐구</h1>
+      <p>학번과 이름을 입력한 뒤 시뮬레이션을 시작하세요.</p>
+      <div class="gate-grid">
+        <label>학번<input id="studentNumber" type="text" inputmode="numeric" autocomplete="off" placeholder="예: 20315"></label>
+        <label>이름<input id="studentName" type="text" autocomplete="off" placeholder="예: 홍길동"></label>
+        <button id="enterBtn" type="button" disabled>탐구 시작</button>
+      </div>
+    </div>
+  </div>
+  <section id="simulationPage" aria-label="시뮬레이션 탐색 페이지">
+  <div id="studentDashboard">
+    <div class="title">학생용 탐구 대시보드</div>
+    <div class="dashboard-actions">
+      <div id="studentInfo">학번과 이름을 입력해 주세요.</div>
+      <button id="finishExploreBtn" type="button">탐색 완료 → 개념 퀴즈</button>
+    </div>
+  </div>
+  <div id="learningGoal">학습 목표: 파장, 슬릿 간격, 스크린 거리가 간섭무늬 간격에 미치는 영향을 관찰한다.</div>
+
 
   <div id="controls">
     <div class="control-group">
@@ -94,8 +189,8 @@
     <div class="control-group">
       <label>슬릿 간격 (d)</label>
       <div class="control-row">
-        <input type="range" id="slitSlider" min="0.05" max="0.5" step="0.01" value="0.15">
-        <input type="number" id="slitInput" min="0.05" max="0.5" step="0.01" value="0.15"> mm
+        <input type="range" id="slitSlider" min="0.01" max="2.0" step="0.01" value="0.15">
+        <input type="number" id="slitInput" min="0.01" max="2.0" step="0.01" value="0.15"> mm
       </div>
     </div>
     <div class="control-group">
@@ -105,282 +200,538 @@
         <input type="number" id="distInput" min="0.5" max="3.0" step="0.1" value="1.5"> m
       </div>
     </div>
-    <!-- 애니메이션 및 뷰 제어 버튼 그룹 -->
     <div class="control-group" style="flex-direction: row; align-items: flex-end; padding-bottom: 2px;">
       <button id="startBtn">▶ 시작</button>
       <button id="stopBtn">⏸ 정지</button>
-      <button id="viewToggleBtn">뷰 모드: 동적 파동</button>
     </div>
   </div>
 
   <div id="canvas-container">
     <div id="tooltip"></div>
   </div>
+  </section>
+
+  <section id="quizPage" aria-label="개념 복습 퀴즈 페이지">
+    <div class="page-shell">
+      <header class="quiz-header">
+        <div class="quiz-header-top">
+          <div>
+            <h1>영의 이중슬릿 개념 복습</h1>
+            <p>시뮬레이션에서 관찰한 관계를 떠올리며 5문항에 답하세요.</p>
+          </div>
+          <div id="quizStudentInfo"></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span>응답 진행률</span><span id="quizProgressText">0 / 5</span></div>
+          <div class="progress-track"><div id="quizProgressBar"></div></div>
+        </div>
+      </header>
+
+      <form id="quizForm">
+        <article class="quiz-card" data-answer="2">
+          <h2 class="question-title"><span class="question-number">1</span>이중슬릿에서 이웃한 밝은 무늬 사이의 간격을 나타내는 식은?</h2>
+          <div class="option-list">
+            <label class="option-item"><input type="radio" name="q1" value="1">① Δy = dL/λ</label>
+            <label class="option-item"><input type="radio" name="q1" value="2">② Δy = λL/d</label>
+            <label class="option-item"><input type="radio" name="q1" value="3">③ Δy = λd/L</label>
+            <label class="option-item"><input type="radio" name="q1" value="4">④ Δy = L/(λd)</label>
+          </div>
+          <div class="question-feedback" aria-live="polite"></div>
+        </article>
+
+        <article class="quiz-card" data-answer="3">
+          <h2 class="question-title"><span class="question-number">2</span>슬릿 간격과 스크린 거리를 그대로 두고 빛의 파장만 증가시키면 간섭무늬는 어떻게 변하는가?</h2>
+          <div class="option-list">
+            <label class="option-item"><input type="radio" name="q2" value="1">① 무늬 간격이 좁아진다.</label>
+            <label class="option-item"><input type="radio" name="q2" value="2">② 무늬 간격은 변하지 않는다.</label>
+            <label class="option-item"><input type="radio" name="q2" value="3">③ 무늬 간격이 넓어진다.</label>
+            <label class="option-item"><input type="radio" name="q2" value="4">④ 중앙 밝은 무늬가 사라진다.</label>
+          </div>
+          <div class="question-feedback" aria-live="polite"></div>
+        </article>
+
+        <article class="quiz-card" data-answer="1">
+          <h2 class="question-title"><span class="question-number">3</span>파장과 스크린 거리를 그대로 두고 두 슬릿 사이의 간격을 증가시키면 어떻게 되는가?</h2>
+          <div class="option-list">
+            <label class="option-item"><input type="radio" name="q3" value="1">① 무늬 간격이 좁아진다.</label>
+            <label class="option-item"><input type="radio" name="q3" value="2">② 무늬 간격이 넓어진다.</label>
+            <label class="option-item"><input type="radio" name="q3" value="3">③ 밝은 무늬의 색만 변한다.</label>
+            <label class="option-item"><input type="radio" name="q3" value="4">④ 모든 밝은 무늬가 사라진다.</label>
+          </div>
+          <div class="question-feedback" aria-live="polite"></div>
+        </article>
+
+        <article class="quiz-card" data-answer="4">
+          <h2 class="question-title"><span class="question-number">4</span>다른 조건을 그대로 두고 스크린을 이중슬릿에서 더 멀리 이동시키면 옳은 관찰은?</h2>
+          <div class="option-list">
+            <label class="option-item"><input type="radio" name="q4" value="1">① 스크린은 왼쪽으로 이동하고 무늬 간격이 좁아진다.</label>
+            <label class="option-item"><input type="radio" name="q4" value="2">② 스크린은 오른쪽으로 이동하지만 무늬 간격은 변하지 않는다.</label>
+            <label class="option-item"><input type="radio" name="q4" value="3">③ 스크린은 왼쪽으로 이동하고 무늬 간격이 넓어진다.</label>
+            <label class="option-item"><input type="radio" name="q4" value="4">④ 스크린은 오른쪽으로 이동하고 무늬 간격이 넓어진다.</label>
+          </div>
+          <div class="question-feedback" aria-live="polite"></div>
+        </article>
+
+        <article class="quiz-card" data-answer="2">
+          <h2 class="question-title"><span class="question-number">5</span>스크린 위 한 점에서 두 슬릿으로부터 온 빛의 경로차가 mλ일 때 나타나는 현상은? (m은 정수)</h2>
+          <div class="option-list">
+            <label class="option-item"><input type="radio" name="q5" value="1">① 항상 어두운 무늬가 나타난다.</label>
+            <label class="option-item"><input type="radio" name="q5" value="2">② 보강간섭으로 밝은 무늬가 나타난다.</label>
+            <label class="option-item"><input type="radio" name="q5" value="3">③ 파장이 0이 된다.</label>
+            <label class="option-item"><input type="radio" name="q5" value="4">④ 두 파동이 서로 다른 속도로 진행한다.</label>
+          </div>
+          <div class="question-feedback" aria-live="polite"></div>
+        </article>
+      </form>
+
+      <div class="quiz-actions">
+        <button id="backSimulationBtn" type="button">← 시뮬레이션으로 돌아가기</button>
+        <button id="submitQuizBtn" type="button">퀴즈 제출하기</button>
+        <button id="retryQuizBtn" type="button">다시 풀기</button>
+      </div>
+
+      <div id="quizResult" aria-live="polite">
+        <div>개념 복습 결과</div>
+        <div id="quizScore">0점</div>
+        <p id="quizMessage"></p>
+      </div>
+
+      <section id="incorrectFeedbackPanel" aria-live="polite"></section>
+      <div id="postSubmitActions" class="post-submit-actions">
+        <button id="finishActivityBtn" type="button">활동 종료</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="finishPage" aria-label="활동 종료 페이지">
+    <div class="finish-card">
+      <div class="finish-icon">✓</div>
+      <h1>탐구 활동을 완료했습니다</h1>
+      <p>영의 이중슬릿 시뮬레이션 탐색과 개념 복습 퀴즈를 모두 마쳤습니다.</p>
+      <div id="finishStudentInfo"></div>
+      <div id="finishScore">0점</div>
+      <p id="finishMessage"></p>
+      <div class="result-actions"><button id="downloadCsvBtn" type="button">CSV 결과 다시 저장</button></div><p id="downloadStatus"></p><p class="finish-note">자동 저장된 CSV 결과 파일을 선생님께 제출한 뒤 브라우저 창을 닫아 주세요.</p>
+    </div>
+  </section>
 
   <script>
     let lambda_nm = 532;
     let d_mm = 0.15;
     let L_m = 1.5;
-    
-    let isPlaying = true; // 재생 상태 변수
-    let viewMode = 'dynamic';
-    let waveColor;
+    let isPlaying = false;
     let time = 0;
+    let waveColor;
     let tooltip;
-    
-    const canvasW = 1000;
-    const canvasH = 600;
-    const leftWidth = 600;
-    const screenX = leftWidth; 
-    
-    const physicalScreenHeight_mm = 50; 
 
-    // 공간 배치 x좌표
-    const src_x = 20;    // 최초 광원
-    const s0_x = 100;    // 단일 슬릿
-    const s12_x = 250;   // 이중 슬릿
+    const canvasW = 1140;
+    const canvasH = 600;
+    const physicalScreenHeight_mm = 50;
+    const src_x = 20;
+    const s0_x = 100;
+    const s12_x = 250;
+
+    // L = 1.5 m일 때 x = 600을 유지하고,
+    // 거리 변화에 따라 스크린과 세기 그래프가 함께 좌우로 이동한다.
+    function getScreenX() {
+      return 360 + 160 * L_m; // L: 0.5~3.0 m → x: 440~840 px
+    }
 
     function setup() {
-      let canvas = createCanvas(canvasW, canvasH);
+      const canvas = createCanvas(canvasW, canvasH);
       canvas.parent('canvas-container');
       tooltip = document.getElementById('tooltip');
+
+      const studentGate = document.getElementById('studentGate');
+      const studentNumber = document.getElementById('studentNumber');
+      const studentName = document.getElementById('studentName');
+      const enterBtn = document.getElementById('enterBtn');
+      const studentInfo = document.getElementById('studentInfo');
+      const finishExploreBtn = document.getElementById('finishExploreBtn');
+      const simulationPage = document.getElementById('simulationPage');
+      const quizPage = document.getElementById('quizPage');
+      const quizStudentInfo = document.getElementById('quizStudentInfo');
+      const quizForm = document.getElementById('quizForm');
+      const submitQuizBtn = document.getElementById('submitQuizBtn');
+      const retryQuizBtn = document.getElementById('retryQuizBtn');
+      const backSimulationBtn = document.getElementById('backSimulationBtn');
+      const finishActivityBtn = document.getElementById('finishActivityBtn');
+      const finishPage = document.getElementById('finishPage');
+      const finishStudentInfo = document.getElementById('finishStudentInfo');
+      const finishScore = document.getElementById('finishScore');
+      const finishMessage = document.getElementById('finishMessage');
+      const quizResult = document.getElementById('quizResult');
+      const quizScore = document.getElementById('quizScore');
+      const quizMessage = document.getElementById('quizMessage');
+      const incorrectFeedbackPanel = document.getElementById('incorrectFeedbackPanel');
+      const postSubmitActions = document.getElementById('postSubmitActions');
+      const quizProgressText = document.getElementById('quizProgressText');
+      const quizProgressBar = document.getElementById('quizProgressBar');
+      let studentLabel = '';
+      let finalScore = 0;
+      let finalCorrectCount = 0;
+      let finalAnswers = [];
+      let completedAt = '';
+      const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+      const downloadStatus = document.getElementById('downloadStatus');
+
+      const validateStudent = () => {
+        enterBtn.disabled = !(studentNumber.value.trim() && studentName.value.trim());
+      };
+      studentNumber.addEventListener('input', validateStudent);
+      studentName.addEventListener('input', validateStudent);
+      enterBtn.addEventListener('click', () => {
+        if (enterBtn.disabled) return;
+        studentLabel = `${studentNumber.value.trim()} · ${studentName.value.trim()}`;
+        studentInfo.textContent = studentLabel;
+        quizStudentInfo.textContent = studentLabel;
+        studentGate.style.display = 'none';
+        isPlaying = true;
+      });
+      studentName.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !enterBtn.disabled) enterBtn.click();
+      });
+
+      const explanations = [
+        '무늬 간격은 Δy = λL/d이다. 따라서 파장 λ와 스크린 거리 L에 비례하고 슬릿 간격 d에 반비례한다.',
+        'Δy = λL/d에서 λ가 커지면 Δy도 커지므로 밝은 무늬 사이가 더 넓어진다.',
+        'Δy = λL/d에서 d가 커지면 Δy는 작아지므로 무늬가 더 촘촘해진다.',
+        '스크린 거리 L이 증가하면 스크린은 슬릿에서 멀어지고, Δy가 L에 비례하므로 무늬 간격도 넓어진다.',
+        '경로차가 mλ이면 두 파동이 같은 위상으로 만나 보강간섭을 하므로 밝은 무늬가 나타난다.'
+      ];
+
+      const updateQuizProgress = () => {
+        const answered = quizForm.querySelectorAll('input[type="radio"]:checked').length;
+        quizProgressText.textContent = `${answered} / 5`;
+        quizProgressBar.style.width = `${answered * 20}%`;
+      };
+
+      quizForm.addEventListener('change', updateQuizProgress);
+
+      finishExploreBtn.addEventListener('click', () => {
+        isPlaying = false;
+        simulationPage.style.display = 'none';
+        quizPage.style.display = 'block';
+        quizStudentInfo.textContent = studentLabel;
+        window.scrollTo(0, 0);
+        updateQuizProgress();
+      });
+
+      backSimulationBtn.addEventListener('click', () => {
+        quizPage.style.display = 'none';
+        simulationPage.style.display = 'block';
+        isPlaying = true;
+        window.scrollTo(0, 0);
+      });
+
+      submitQuizBtn.addEventListener('click', () => {
+        const cards = [...quizForm.querySelectorAll('.quiz-card')];
+        const unanswered = cards.filter((card, index) => !quizForm.querySelector(`input[name="q${index + 1}"]:checked`));
+        if (unanswered.length) {
+          unanswered[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          unanswered[0].style.outline = '3px solid #f59e0b';
+          setTimeout(() => unanswered[0].style.outline = '', 1400);
+          return;
+        }
+
+        let correctCount = 0;
+        cards.forEach((card, index) => {
+          const selected = quizForm.querySelector(`input[name="q${index + 1}"]:checked`);
+          const isCorrect = selected.value === card.dataset.answer;
+          const feedback = card.querySelector('.question-feedback');
+          if (isCorrect) {
+            correctCount += 1;
+            feedback.className = 'question-feedback correct';
+            feedback.innerHTML = `<strong>정답입니다.</strong> ${explanations[index]}`;
+          } else {
+            feedback.className = 'question-feedback incorrect';
+            feedback.innerHTML = `<strong>다시 확인해 보세요.</strong> ${explanations[index]}`;
+          }
+          card.querySelectorAll('input').forEach(input => input.disabled = true);
+        });
+
+        const score = correctCount * 20;
+        finalScore = score;
+        finalCorrectCount = correctCount;
+        finalAnswers = cards.map((card, index) => { const selected = quizForm.querySelector(`input[name="q${index + 1}"]:checked`); return { question:index+1, selected:Number(selected.value), correct:Number(card.dataset.answer), isCorrect:selected.value===card.dataset.answer }; });
+        quizScore.textContent = `${score}점 (${correctCount}/5)`;
+        quizMessage.textContent = score === 100
+          ? '완벽합니다! 시뮬레이션에서 확인한 세 변수의 관계와 보강간섭 조건을 정확히 이해했습니다.'
+          : score >= 80
+            ? '핵심 개념을 잘 이해했습니다. 틀린 문항의 해설을 확인해 관계식을 다시 점검하세요.'
+            : score >= 60
+              ? '기본 관계는 이해했습니다. 파장·스크린 거리·슬릿 간격이 무늬 간격에 미치는 영향을 다시 비교해 보세요.'
+              : '시뮬레이션으로 돌아가 변수를 하나씩 바꾸며 무늬 간격의 변화를 다시 관찰해 보세요.';
+        const wrongItems = finalAnswers.filter(answer => !answer.isCorrect);
+        if (wrongItems.length === 0) {
+          incorrectFeedbackPanel.innerHTML = `
+            <div class="feedback-summary">
+              <h2>오답 피드백</h2>
+              <div class="feedback-perfect">오답이 없습니다. 모든 개념을 정확하게 이해했습니다.</div>
+            </div>`;
+        } else {
+          const feedbackItems = wrongItems.map(answer => {
+            const card = cards[answer.question - 1];
+            const selectedLabel = card.querySelector(`input[value="${answer.selected}"]`).closest('label').textContent.trim();
+            const correctLabel = card.querySelector(`input[value="${answer.correct}"]`).closest('label').textContent.trim();
+            return `
+              <article class="feedback-item">
+                <h3>${answer.question}번 문항 피드백</h3>
+                <p class="feedback-answer"><strong>내가 고른 답:</strong> ${selectedLabel}</p>
+                <p class="feedback-answer"><strong>정답:</strong> ${correctLabel}</p>
+                <p class="feedback-concept"><strong>핵심 개념:</strong> ${explanations[answer.question - 1]}</p>
+              </article>`;
+          }).join('');
+          incorrectFeedbackPanel.innerHTML = `
+            <div class="feedback-summary">
+              <h2>틀린 문제 피드백</h2>
+              <p>아래 내용을 확인한 뒤 활동을 종료하세요. 관계식의 어느 변수가 분자와 분모에 있는지 함께 살펴보면 좋습니다.</p>
+              <div class="feedback-list">${feedbackItems}</div>
+            </div>`;
+        }
+        incorrectFeedbackPanel.classList.add('show');
+        quizResult.classList.add('show');
+        submitQuizBtn.style.display = 'none';
+        retryQuizBtn.style.display = 'inline-block';
+        postSubmitActions.classList.add('show');
+        incorrectFeedbackPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      retryQuizBtn.addEventListener('click', () => {
+        quizForm.reset();
+        quizForm.querySelectorAll('input').forEach(input => input.disabled = false);
+        quizForm.querySelectorAll('.question-feedback').forEach(feedback => {
+          feedback.className = 'question-feedback';
+          feedback.textContent = '';
+        });
+        quizResult.classList.remove('show');
+        incorrectFeedbackPanel.classList.remove('show');
+        incorrectFeedbackPanel.innerHTML = '';
+        postSubmitActions.classList.remove('show');
+        submitQuizBtn.style.display = 'inline-block';
+        retryQuizBtn.style.display = 'none';
+        finalScore = 0;
+        finalCorrectCount = 0;
+        updateQuizProgress();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      const buildResult = () => ({
+        schema: 'young-double-slit-result-v1',
+        studentNumber: studentNumber.value.trim(), studentName: studentName.value.trim(),
+        score: finalScore, correctCount: finalCorrectCount, totalQuestions: 5,
+        answers: finalAnswers, completedAt: completedAt || new Date().toISOString(),
+        finalParameters: { wavelengthNm: lambda_nm, slitDistanceMm: d_mm, screenDistanceM: L_m }
+      });
+      const safeName = () => `${studentNumber.value.trim()}_${studentName.value.trim()}`.replace(/[^0-9A-Za-z가-힣_-]/g,'_');
+      const saveBlob = (content, type, filename) => { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=filename; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); };
+      const downloadCsv = () => { const r=buildResult(); const row=[r.studentNumber,r.studentName,r.score,...r.answers.map(a=>a.isCorrect?'O':'X'),r.completedAt,r.finalParameters.wavelengthNm,r.finalParameters.slitDistanceMm,r.finalParameters.screenDistanceM]; const csv='학번,이름,점수,Q1,Q2,Q3,Q4,Q5,완료시각,파장_nm,슬릿간격_mm,스크린거리_m\n'+row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','); saveBlob('\ufeff'+csv,'text/csv;charset=utf-8',`이중슬릿_결과_${safeName()}.csv`); downloadStatus.textContent='CSV 결과 파일이 저장되었습니다. 선생님께 제출하세요.'; };
+      downloadCsvBtn.addEventListener('click', downloadCsv);
+
+      finishActivityBtn.addEventListener('click', () => {
+        completedAt = new Date().toISOString();
+        quizPage.style.display = 'none';
+        simulationPage.style.display = 'none';
+        studentGate.style.display = 'none';
+        finishPage.style.display = 'flex';
+        finishStudentInfo.textContent = studentLabel;
+        finishScore.textContent = `${finalScore}점 (${finalCorrectCount}/5)`;
+        finishMessage.textContent = finalScore === 100
+          ? '모든 문항을 정확히 해결했습니다. 개념을 매우 잘 이해하고 있습니다.'
+          : finalScore >= 80
+            ? '핵심 개념을 잘 이해했습니다. 문항별 해설도 함께 기억해 두세요.'
+            : finalScore >= 60
+              ? '탐구를 완료했습니다. 무늬 간격 관계식을 한 번 더 복습해 보세요.'
+              : '탐구를 완료했습니다. 다음 학습 전에 시뮬레이션의 변수 관계를 다시 확인해 보세요.';
+        isPlaying = false;
+        window.scrollTo(0, 0);
+        setTimeout(downloadCsv, 100);
+      });
+
 
       const syncInput = (sliderId, inputId, updateVarFunc) => {
         const slider = document.getElementById(sliderId);
         const input = document.getElementById(inputId);
-        slider.addEventListener('input', () => { input.value = slider.value; updateVarFunc(); });
-        input.addEventListener('input', () => { slider.value = input.value; updateVarFunc(); });
+        slider.addEventListener('input', () => {
+          input.value = slider.value;
+          updateVarFunc();
+        });
+        input.addEventListener('input', () => {
+          slider.value = input.value;
+          updateVarFunc();
+        });
       };
 
-      syncInput('waveSlider', 'waveInput', () => lambda_nm = parseFloat(document.getElementById('waveSlider').value));
-      syncInput('slitSlider', 'slitInput', () => d_mm = parseFloat(document.getElementById('slitSlider').value));
-      syncInput('distSlider', 'distInput', () => L_m = parseFloat(document.getElementById('distSlider').value));
+      syncInput('waveSlider', 'waveInput', () => {
+        lambda_nm = parseFloat(document.getElementById('waveSlider').value);
+      });
+      syncInput('slitSlider', 'slitInput', () => {
+        d_mm = parseFloat(document.getElementById('slitSlider').value);
+      });
+      syncInput('distSlider', 'distInput', () => {
+        L_m = parseFloat(document.getElementById('distSlider').value);
+      });
 
-      // 시작/정지 이벤트 연결
-      document.getElementById('startBtn').addEventListener('click', () => { isPlaying = true; });
-      document.getElementById('stopBtn').addEventListener('click', () => { isPlaying = false; });
-
-      document.getElementById('viewToggleBtn').addEventListener('click', (e) => {
-        if (viewMode === 'dynamic') {
-          viewMode = 'static';
-          e.target.innerText = '뷰 모드: 정적 히트맵';
-        } else {
-          viewMode = 'dynamic';
-          e.target.innerText = '뷰 모드: 동적 파동';
-        }
+      document.getElementById('startBtn').addEventListener('click', () => {
+        isPlaying = true;
+      });
+      document.getElementById('stopBtn').addEventListener('click', () => {
+        isPlaying = false;
       });
     }
 
     function draw() {
       background(10);
       waveColor = nmToRGB(lambda_nm);
-      
-      if (isPlaying) {
-        time += 0.15; // 재생 중일 때만 시간 증가
-      }
-
-      drawLeftView();
-      drawRightView();
+      if (isPlaying) time += 0.15;
+      drawDynamicWaves();
+      drawScreenAndGraph();
       handleTooltip();
     }
 
-    function drawLeftView() {
-      let slit1_y = canvasH / 2 - (d_mm / physicalScreenHeight_mm * canvasH) / 2;
-      let slit2_y = canvasH / 2 + (d_mm / physicalScreenHeight_mm * canvasH) / 2;
-      let visualWavelength = map(lambda_nm, 380, 780, 10, 20); 
+    function drawDynamicWaves() {
+      const screenX = getScreenX();
+      const slit1_y = canvasH / 2 - (d_mm / physicalScreenHeight_mm * canvasH) / 2;
+      const slit2_y = canvasH / 2 + (d_mm / physicalScreenHeight_mm * canvasH) / 2;
+      const visualWavelength = map(lambda_nm, 380, 780, 10, 20);
 
-      if (viewMode === 'dynamic') {
-        noFill();
-        strokeWeight(1.5);
-        
-        // 1. 광원 -> 단일 슬릿
-        for (let r = (time * 10) % visualWavelength; r < s0_x - src_x; r += visualWavelength) {
-          let alpha = map(r, 0, s0_x - src_x, 255, 50);
-          stroke(waveColor.r, waveColor.g, waveColor.b, alpha);
-          arc(src_x, canvasH / 2, r * 2, r * 2, -HALF_PI, HALF_PI);
-        }
+      noFill();
+      strokeWeight(1.5);
 
-        // 2. 단일 슬릿 -> 이중 슬릿
-        for (let r = (time * 10) % visualWavelength; r < s12_x - s0_x; r += visualWavelength) {
-          let alpha = map(r, 0, s12_x - s0_x, 255, 100);
-          stroke(waveColor.r, waveColor.g, waveColor.b, alpha);
-          arc(s0_x, canvasH / 2, r * 2, r * 2, -HALF_PI, HALF_PI);
-        }
-
-        // 3. 이중 슬릿 -> 스크린
-        for (let r = (time * 10) % visualWavelength; r < leftWidth - s12_x; r += visualWavelength) {
-          let alpha = map(r, 0, leftWidth - s12_x, 255, 0);
-          stroke(waveColor.r, waveColor.g, waveColor.b, alpha);
-          arc(s12_x, slit1_y, r * 2, r * 2, -HALF_PI, HALF_PI);
-          arc(s12_x, slit2_y, r * 2, r * 2, -HALF_PI, HALF_PI);
-        }
-      } else {
-        loadPixels();
-        for (let x = src_x; x < leftWidth; x += 3) { 
-          for (let y = 0; y < canvasH; y += 3) {
-            let intensity = 0;
-            if (x < s0_x) {
-              let d = dist(x, y, src_x, canvasH / 2);
-              intensity = sq(cos((d / visualWavelength) * TWO_PI));
-            } else if (x < s12_x) {
-              let d = dist(x, y, s0_x, canvasH / 2);
-              intensity = sq(cos((d / visualWavelength) * TWO_PI));
-            } else {
-              let d1 = dist(x, y, s12_x, slit1_y);
-              let d2 = dist(x, y, s12_x, slit2_y);
-              let phaseDiff = (abs(d1 - d2) / visualWavelength) * TWO_PI;
-              intensity = sq(cos(phaseDiff / 2)); 
-            }
-            let alpha = intensity * 255 * map(x, src_x, leftWidth, 1, 0.2);
-            fill(waveColor.r, waveColor.g, waveColor.b, alpha);
-            noStroke();
-            rect(x, y, 3, 3);
-          }
-        }
+      // 광원 → 첫 번째 슬릿
+      for (let r = (time * 10) % visualWavelength; r < s0_x - src_x; r += visualWavelength) {
+        stroke(waveColor.r, waveColor.g, waveColor.b, map(r, 0, s0_x - src_x, 255, 50));
+        arc(src_x, canvasH / 2, r * 2, r * 2, -HALF_PI, HALF_PI);
       }
 
-      // 광원 표시
+      // 첫 번째 슬릿 → 이중 슬릿
+      for (let r = (time * 10) % visualWavelength; r < s12_x - s0_x; r += visualWavelength) {
+        stroke(waveColor.r, waveColor.g, waveColor.b, map(r, 0, s12_x - s0_x, 255, 100));
+        arc(s0_x, canvasH / 2, r * 2, r * 2, -HALF_PI, HALF_PI);
+      }
+
+      // 이중 슬릿 → 움직이는 스크린
+      for (let r = (time * 10) % visualWavelength; r < screenX - s12_x; r += visualWavelength) {
+        stroke(waveColor.r, waveColor.g, waveColor.b, map(r, 0, screenX - s12_x, 255, 0));
+        arc(s12_x, slit1_y, r * 2, r * 2, -HALF_PI, HALF_PI);
+        arc(s12_x, slit2_y, r * 2, r * 2, -HALF_PI, HALF_PI);
+      }
+
       fill(waveColor.r, waveColor.g, waveColor.b);
       noStroke();
       ellipse(src_x, canvasH / 2, 8, 8);
 
-      // 벽 그리기
       stroke(150);
       strokeWeight(4);
-      let gap = 5; 
-      
-      // 단일 슬릿 벽
-      line(s0_x, 0, s0_x, canvasH / 2 - gap);
-      line(s0_x, canvasH / 2 + gap, s0_x, canvasH);
-      
-      // 이중 슬릿 벽
-      line(s12_x, 0, s12_x, slit1_y - gap);
-      line(s12_x, slit1_y + gap, s12_x, slit2_y - gap);
-      line(s12_x, slit2_y + gap, s12_x, canvasH);
+      line(s0_x, 0, s0_x, canvasH / 2 - 5);
+      line(s0_x, canvasH / 2 + 5, s0_x, canvasH);
+      line(s12_x, 0, s12_x, slit1_y - 5);
+      line(s12_x, slit1_y + 5, s12_x, slit2_y - 5);
+      line(s12_x, slit2_y + 5, s12_x, canvasH);
     }
 
-    function drawRightView() {
+    function drawScreenAndGraph() {
+      const screenX = getScreenX();
+
+      // 이중 슬릿과 스크린 사이의 실제 거리 표시
+      stroke(160);
+      strokeWeight(1);
+      line(s12_x + 8, canvasH - 28, screenX - 8, canvasH - 28);
+      line(s12_x + 8, canvasH - 34, s12_x + 8, canvasH - 22);
+      line(screenX - 8, canvasH - 34, screenX - 8, canvasH - 22);
+      fill(190);
+      noStroke();
+      textAlign(CENTER);
+      text(`L = ${L_m.toFixed(1)} m`, (s12_x + screenX) / 2, canvasH - 36);
+
       stroke(50);
       strokeWeight(1);
       line(screenX, canvasH / 2, canvasW, canvasH / 2);
 
-      let maxIntensityWidth = 150; 
+      const maxIntensityWidth = 150;
+      const slitWidth_m = 0.04 / 1000;
 
+      noFill();
+      stroke(waveColor.r, waveColor.g, waveColor.b, 150);
+      strokeWeight(2);
+      beginShape();
       for (let y = 0; y < canvasH; y++) {
-        let physicalY_m = map(y, 0, canvasH, -physicalScreenHeight_mm/2, physicalScreenHeight_mm/2) / 1000;
-        
-        let r1 = sqrt(sq(L_m) + sq(physicalY_m - (d_mm/1000)/2));
-        let r2 = sqrt(sq(L_m) + sq(physicalY_m + (d_mm/1000)/2));
-        let deltaX = abs(r1 - r2);
-        
-        let lambda_m = lambda_nm * 1e-9;
-        let phase = (PI * deltaX) / lambda_m;
-        let intensity = sq(cos(phase));
-
-        stroke(waveColor.r, waveColor.g, waveColor.b, intensity * 255);
-        line(screenX, y, screenX + 100, y);
-
-        let graphX = screenX + 100 + intensity * maxIntensityWidth;
-        stroke(waveColor.r, waveColor.g, waveColor.b, 150);
-        point(graphX, y);
+        const physicalY_m = map(y, 0, canvasH, -physicalScreenHeight_mm / 2, physicalScreenHeight_mm / 2) / 1000;
+        const deltaX = abs(
+          sqrt(sq(L_m) + sq(physicalY_m - (d_mm / 1000) / 2)) -
+          sqrt(sq(L_m) + sq(physicalY_m + (d_mm / 1000) / 2))
+        );
+        const phase = (PI * deltaX) / (lambda_nm * 1e-9);
+        const sinTheta = physicalY_m / sqrt(sq(L_m) + sq(physicalY_m));
+        const beta = (PI * slitWidth_m * sinTheta) / (lambda_nm * 1e-9);
+        const envelope = abs(beta) < 1e-9 ? 1 : sq(sin(beta) / beta);
+        vertex(screenX + 100 + sq(cos(phase)) * envelope * maxIntensityWidth, y);
       }
-      
+      endShape();
+
+      strokeWeight(1);
+      for (let y = 0; y < canvasH; y++) {
+        const physicalY_m = map(y, 0, canvasH, -physicalScreenHeight_mm / 2, physicalScreenHeight_mm / 2) / 1000;
+        const deltaX = abs(
+          sqrt(sq(L_m) + sq(physicalY_m - (d_mm / 1000) / 2)) -
+          sqrt(sq(L_m) + sq(physicalY_m + (d_mm / 1000) / 2))
+        );
+        const phase = (PI * deltaX) / (lambda_nm * 1e-9);
+        const sinTheta = physicalY_m / sqrt(sq(L_m) + sq(physicalY_m));
+        const beta = (PI * slitWidth_m * sinTheta) / (lambda_nm * 1e-9);
+        const envelope = abs(beta) < 1e-9 ? 1 : sq(sin(beta) / beta);
+        stroke(waveColor.r, waveColor.g, waveColor.b, sq(cos(phase)) * envelope * 255);
+        line(screenX, y, screenX + 100, y);
+      }
+
       stroke(100);
       line(screenX, 0, screenX, canvasH);
       line(screenX + 100, 0, screenX + 100, canvasH);
-      
+
       fill(200);
       noStroke();
-      textSize(12);
       textAlign(CENTER);
-      text("스크린", screenX + 50, 20);
-      text("빛의 세기 그래프", screenX + 250, 20);
+      text('스크린', screenX + 50, 20);
+      text('빛의 세기 그래프', screenX + 250, 20);
     }
 
     function handleTooltip() {
+      const screenX = getScreenX();
       if (mouseX > screenX && mouseX < screenX + 100 && mouseY > 0 && mouseY < canvasH) {
-        let physicalY_m = map(mouseY, 0, canvasH, -physicalScreenHeight_mm/2, physicalScreenHeight_mm/2) / 1000;
-        
-        let slit1_y = canvasH / 2 - (d_mm / physicalScreenHeight_mm * canvasH) / 2;
-        let slit2_y = canvasH / 2 + (d_mm / physicalScreenHeight_mm * canvasH) / 2;
-
-        stroke(255, 255, 255, 100);
-        strokeWeight(1);
-        drawingContext.setLineDash([5, 5]);
-        line(s12_x, slit1_y, screenX, mouseY);
-        line(s12_x, slit2_y, screenX, mouseY);
-        drawingContext.setLineDash([]);
-
-        let r1 = sqrt(sq(L_m) + sq(physicalY_m - (d_mm/1000)/2));
-        let r2 = sqrt(sq(L_m) + sq(physicalY_m + (d_mm/1000)/2));
-        let deltaX_nm = abs(r1 - r2) * 1e9; 
-        
-        let halfLambda = lambda_nm / 2;
-        let ratio = deltaX_nm / halfLambda;
-        let isConstructive = abs(Math.round(ratio) - ratio) < 0.1 && Math.round(ratio) % 2 === 0;
-        let isDestructive = abs(Math.round(ratio) - ratio) < 0.1 && Math.round(ratio) % 2 !== 0;
-
-        let statusText = "중간 지점";
-        let colorHex = "#ffffff";
-        if (isConstructive) { statusText = "보강 간섭 (밝은 무늬)"; colorHex = "#4CAF50"; }
-        else if (isDestructive) { statusText = "상쇄 간섭 (어두운 무늬)"; colorHex = "#F44336"; }
-
-        tooltip.innerHTML = `
-          <strong>스크린 위치:</strong> ${mouseY < canvasH/2 ? '중앙 상단' : '중앙 하단'} ${abs((physicalY_m*1000).toFixed(2))} mm<br>
-          <strong>경로차 (Δx):</strong> ${deltaX_nm.toFixed(1)} nm<br>
-          <strong>λ/2 의 배수:</strong> 약 ${ratio.toFixed(2)} 배<br>
-          <span style="color:${colorHex}; font-weight:bold;">${statusText}</span>
-        `;
-        
         tooltip.style.display = 'block';
-        tooltip.style.left = (mouseX + 15) + 'px';
-        tooltip.style.top = (mouseY + 15) + 'px';
+        tooltip.style.left = `${mouseX + 15}px`;
+        tooltip.style.top = `${mouseY + 15}px`;
+        tooltip.innerHTML = `<strong>스크린 거리:</strong> ${L_m.toFixed(1)} m<br><strong>중앙에서의 위치:</strong> ${abs(map(mouseY, 0, canvasH, -25, 25).toFixed(2))} mm`;
       } else {
         tooltip.style.display = 'none';
       }
     }
 
     function nmToRGB(Wavelength) {
-      let r, g, b;
+      let r, g, b, factor = 0;
       if (Wavelength >= 380 && Wavelength < 440) {
-        r = -(Wavelength - 440) / (440 - 380);
-        g = 0.0;
-        b = 1.0;
-      } else if (Wavelength >= 440 && Wavelength < 490) {
-        r = 0.0;
-        g = (Wavelength - 440) / (490 - 440);
-        b = 1.0;
-      } else if (Wavelength >= 490 && Wavelength < 510) {
-        r = 0.0;
-        g = 1.0;
-        b = -(Wavelength - 510) / (510 - 490);
-      } else if (Wavelength >= 510 && Wavelength < 580) {
-        r = (Wavelength - 510) / (580 - 510);
-        g = 1.0;
-        b = 0.0;
-      } else if (Wavelength >= 580 && Wavelength < 645) {
-        r = 1.0;
-        g = -(Wavelength - 645) / (645 - 580);
-        b = 0.0;
-      } else if (Wavelength >= 645 && Wavelength <= 780) {
-        r = 1.0;
-        g = 0.0;
-        b = 0.0;
+        r = -(Wavelength - 440) / 60; g = 0; b = 1;
+      } else if (Wavelength < 490) {
+        r = 0; g = (Wavelength - 440) / 50; b = 1;
+      } else if (Wavelength < 510) {
+        r = 0; g = 1; b = -(Wavelength - 510) / 20;
+      } else if (Wavelength < 580) {
+        r = (Wavelength - 510) / 70; g = 1; b = 0;
+      } else if (Wavelength < 645) {
+        r = 1; g = -(Wavelength - 645) / 65; b = 0;
       } else {
-        r = 0; g = 0; b = 0;
+        r = 1; g = 0; b = 0;
       }
-      
-      let factor = 1.0;
-      if (Wavelength >= 380 && Wavelength < 420) {
-        factor = 0.3 + 0.7 * (Wavelength - 380) / (420 - 380);
-      } else if (Wavelength >= 420 && Wavelength < 701) {
-        factor = 1.0;
-      } else if (Wavelength >= 701 && Wavelength <= 780) {
-        factor = 0.3 + 0.7 * (780 - Wavelength) / (780 - 700);
-      } else {
-        factor = 0.0;
-      }
-      return { r: Math.round(r * factor * 255), g: Math.round(g * factor * 255), b: Math.round(b * factor * 255) };
+
+      if (Wavelength < 420) factor = 0.3 + 0.7 * (Wavelength - 380) / 40;
+      else if (Wavelength > 700) factor = 0.3 + 0.7 * (780 - Wavelength) / 80;
+      else factor = 1;
+
+      return {
+        r: Math.round(r * factor * 255),
+        g: Math.round(g * factor * 255),
+        b: Math.round(b * factor * 255)
+      };
     }
   </script>
 </body>
